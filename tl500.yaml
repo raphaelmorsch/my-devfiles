@@ -20,8 +20,10 @@ projects:
         origin: https://github.com/rht-labs/tech-exercise
     name: tech-exercise
 variables:
-  TEAM_NAME: "team2"
-  GIT_SERVER: "github.com"
+  TEAM_NAME: "sefazmg"
+  GIT_SERVER: "gitlab.apps.cluster-b65lf.b65lf.sandbox5265.opentlc.com"
+  CLUSTER_DOMAIN: "apps.cluster-b65lf.b65lf.sandbox5265.opentlc.com"
+  GITLAB_USER: "user1"
 components:
   - container:
       args:
