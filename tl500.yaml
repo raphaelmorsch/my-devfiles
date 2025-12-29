@@ -108,7 +108,7 @@ components:
         - name: npm
           path: /home/developer/.npm
         - name: zshrc
-          path: '~/.zshrc'
+          path: '/home/developer/.zshrc'
     name: stack-tl500
   - name: projects
   - name: config
