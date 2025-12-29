@@ -19,6 +19,9 @@ projects:
       remotes:
         origin: https://github.com/rht-labs/tech-exercise
     name: tech-exercise
+variables:
+  TEAM_NAME: "team2"
+  GIT_SERVER: "github.com"
 components:
   - container:
       args:
@@ -102,9 +105,9 @@ components:
       sourceMapping: /projects
       env:
         - name: TEAM_NAME
-          value: sefazmg
+          value: '{{TEAM_NAME}}'
         - name: GIT_SERVER
-          value: gitlab.apps.cluster-b65lf.b65lf.sandbox5265.opentlc.com
+          value: '{{GIT_SERVER}}'
       volumeMounts:
         - name: projects
           path: /projects
