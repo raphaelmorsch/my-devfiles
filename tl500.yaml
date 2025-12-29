@@ -113,3 +113,4 @@ components:
   - name: projects
   - name: config
   - name: npm
+  - name: bashconfig
