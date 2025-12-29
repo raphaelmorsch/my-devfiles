@@ -19,6 +19,13 @@ projects:
       remotes:
         origin: https://github.com/rht-labs/tech-exercise
     name: tech-exercise
+variables:
+  TEAM_NAME:
+    description: "Your team name for namespace name generation"
+    default: "team1"
+  GIT_SERVER:
+    description: "URL of your git server"
+    default: "github.com"
 components:
   - container:
       args:
@@ -100,6 +107,11 @@ components:
       memoryLimit: 2Gi
       mountSources: true
       sourceMapping: /projects
+      env:
+        - name: TEAM_NAME
+          value: ${TEAM_NAME}
+        - name: GIT_SERVER
+          value: ${GIT_SERVER}
       volumeMounts:
         - name: projects
           path: /projects
@@ -107,10 +119,7 @@ components:
           path: /home/developer/.config
         - name: npm
           path: /home/developer/.npm
-        - name: developer
-          path: '/home/developer'
     name: stack-tl500
   - name: projects
   - name: config
   - name: npm
-  - name: developer
