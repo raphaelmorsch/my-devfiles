@@ -20,12 +20,8 @@ projects:
         origin: https://github.com/rht-labs/tech-exercise
     name: tech-exercise
 variables:
-  TEAM_NAME:
-    description: "Your team name for namespace name generation"
-    default: "team1"
-  GIT_SERVER:
-    description: "URL of your git server"
-    default: "github.com"
+  TEAM_NAME: "team2"
+  GIT_SERVER: "github.com"
 components:
   - container:
       args:
