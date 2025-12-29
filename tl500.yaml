@@ -107,10 +107,10 @@ components:
           path: /home/developer/.config
         - name: npm
           path: /home/developer/.npm
-        - name: bashconfig
-          path: '/home/developer'
+        - name: zshrc
+          path: '/home/developer/.zshrc'
     name: stack-tl500
   - name: projects
   - name: config
   - name: npm
-  - name: bashconfig
+  - name: zshrc
