@@ -110,6 +110,10 @@ components:
           value: '{{TEAM_NAME}}'
         - name: GIT_SERVER
           value: '{{GIT_SERVER}}'
+        - name: CLUSTER_DOMAIN
+          value: '{{CLUSTER_DOMAIN}}'
+        - name: GITLAB_USER
+          value: '{{GITLAB_USER}}'
       volumeMounts:
         - name: projects
           path: /projects
