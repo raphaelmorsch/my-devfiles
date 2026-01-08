@@ -19,11 +19,6 @@ projects:
       remotes:
         origin: https://github.com/rht-labs/tech-exercise
     name: tech-exercise
-variables:
-  TEAM_NAME: "sefazmg"
-  GIT_SERVER: "gitlab.apps.cluster-b65lf.b65lf.sandbox5265.opentlc.com"
-  CLUSTER_DOMAIN: "apps.cluster-b65lf.b65lf.sandbox5265.opentlc.com"
-  GITLAB_USER: "user1"
 components:
   - container:
       args:
@@ -105,15 +100,9 @@ components:
       memoryLimit: 2Gi
       mountSources: true
       sourceMapping: /projects
-      env:
-        - name: TEAM_NAME
-          value: '{{TEAM_NAME}}'
-        - name: GIT_SERVER
-          value: '{{GIT_SERVER}}'
-        - name: CLUSTER_DOMAIN
-          value: '{{CLUSTER_DOMAIN}}'
-        - name: GITLAB_USER
-          value: '{{GITLAB_USER}}'
+      envFrom:
+        - configMapRef:
+            name: dev-env-vars
       volumeMounts:
         - name: projects
           path: /projects
