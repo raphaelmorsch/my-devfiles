@@ -100,9 +100,11 @@ components:
       memoryLimit: 2Gi
       mountSources: true
       sourceMapping: /projects
-      envFrom:
-        - configMapRef:
-            name: dev-env-vars
+      attributes:
+        container-overrides: |
+          envFrom:
+            - configMapRef:
+                name: dev-env-vars
       volumeMounts:
         - name: projects
           path: /projects
