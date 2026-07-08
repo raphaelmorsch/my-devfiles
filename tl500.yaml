@@ -1,118 +1,48 @@
-schemaVersion: 2.1.0
+schemaVersion: 2.3.0
+
 metadata:
-  name: tl500
-attributes:
-  che-theia.eclipse.org/sidecar-policy: USE_DEV_CONTAINER
-  controller.devfile.io/devworkspace-config:
-    name: devworkspace-config
-    namespace: tl500-workspaces
-  controller.devfile.io/storage-type: per-workspace
-  metadata-name-field: generateName
-  metadata-name-original-value: tl500-
-projects:
-  - attributes:
-      source-origin: branch
-    clonePath: tech-exercise
-    git:
-      checkoutFrom:
-        revision: main
-      remotes:
-        origin: https://github.com/rht-labs/tech-exercise
-    name: tech-exercise
+  name: agents-devspace
+  displayName: Agents Workspace
+  description: Workspace com Red Hat UDI RHEL9 e extensões para desenvolvimento com Agents.
+
 components:
-  - container:
-      args:
-        - /bin/sh
-        - '-c'
-        - sleep infinity
-      endpoints:
-        - attributes:
-            discoverable: 'true'
-            protocol: http
-            public: 'true'
-          exposure: public
-          name: ide-8080
-          protocol: http
-          targetPort: 8080
-        - attributes:
-            discoverable: 'true'
-            protocol: http
-            public: 'true'
-          exposure: public
-          name: ide-9000
-          protocol: http
-          targetPort: 9000
-        - attributes:
-            discoverable: 'true'
-            protocol: http
-            public: 'true'
-          exposure: public
-          name: ide-3000
-          protocol: http
-          targetPort: 3000
-        - attributes:
-            discoverable: 'true'
-            protocol: http
-            public: 'true'
-          exposure: public
-          name: ide-4200
-          protocol: http
-          targetPort: 4200
-        - attributes:
-            protocol: http
-          exposure: public
-          name: ide-4444
-          protocol: http
-          targetPort: 4444
-        - attributes:
-            discoverable: 'true'
-            protocol: http
-            public: 'true'
-          exposure: public
-          name: ide-8081
-          protocol: http
-          targetPort: 8081
-        - attributes:
-            discoverable: 'true'
-            protocol: http
-            public: 'true'
-          exposure: public
-          name: ide-8082
-          protocol: http
-          targetPort: 8082
-        - attributes:
-            discoverable: 'true'
-            protocol: http
-            public: 'true'
-          exposure: public
-          name: ide-8083
-          protocol: http
-          targetPort: 8083
-        - attributes:
-            discoverable: 'true'
-            protocol: http
-            public: 'true'
-          exposure: public
-          name: ide-8084
-          protocol: http
-          targetPort: 8084
-      image: quay.io/rht-labs/stack-tl500:3.0.20
-      memoryLimit: 2Gi
+  - name: tools
+    container:
+      image: registry.redhat.io/devspaces/udi-rhel9:3.29-1782991491
+      memoryRequest: 2Gi
+      memoryLimit: 6Gi
+      cpuRequest: "1"
+      cpuLimit: "4"
       mountSources: true
       sourceMapping: /projects
-      attributes:
-        container-overrides: |
-          envFrom:
-            - configMapRef:
-                name: dev-env-vars
-      volumeMounts:
-        - name: projects
-          path: /projects
-        - name: config
-          path: /home/developer/.config
-        - name: npm
-          path: /home/developer/.npm
-    name: stack-tl500
-  - name: projects
-  - name: config
-  - name: npm
+
+commands:
+  - id: install-agent-extensions
+    exec:
+      component: tools
+      workingDir: /projects
+      commandLine: |
+        mkdir -p /projects/extensions
+
+        curl -L -o /projects/extensions/continue.vsix \
+          https://open-vsx.org/api/Continue/continue/latest/file/Continue.continue-latest.vsix
+
+        curl -L -o /projects/extensions/cline.vsix \
+          https://open-vsx.org/api/saoudrizwan/claude-dev/latest/file/saoudrizwan.claude-dev-latest.vsix
+
+        curl -L -o /projects/extensions/yaml.vsix \
+          https://open-vsx.org/api/redhat/vscode-yaml/latest/file/redhat.vscode-yaml-latest.vsix
+
+        curl -L -o /projects/extensions/kubernetes-tools.vsix \
+          https://open-vsx.org/api/ms-kubernetes-tools/vscode-kubernetes-tools/latest/file/ms-kubernetes-tools.vscode-kubernetes-tools-latest.vsix
+
+        curl -L -o /projects/extensions/openshift-toolkit.vsix \
+          https://open-vsx.org/api/redhat/vscode-openshift-connector/latest/file/redhat.vscode-openshift-connector-latest.vsix
+
+events:
+  postStart:
+    - install-agent-extensions
+
+attributes:
+  controller.devfile.io/storage-type: per-user
+  che-theia.eclipse.org/sidecar-policy: mergeImage
