@@ -1,19 +1,22 @@
-schemaVersion: 2.2.0
+schemaVersion: 2.3.0
 
 metadata:
   name: qwen25-opencode
   displayName: Qwen2.5 Code Assistant
+  description: >
+    OpenShift Dev Spaces workspace with OpenCode configured
+    to consume Qwen2.5 served by OpenShift AI / vLLM.
 
 components:
   - name: tools
     container:
-      image: registry.redhat.io/devspaces/udi-rhel9
+      image: registry.redhat.io/devspaces/udi-rhel9:3.29-1782991491
 
-      memoryRequest: 1Gi
-      memoryLimit: 4Gi
+      memoryRequest: 2Gi
+      memoryLimit: 6Gi
 
-      cpuRequest: 500m
-      cpuLimit: 2000m
+      cpuRequest: "1"
+      cpuLimit: "4"
 
       mountSources: true
 
@@ -22,34 +25,43 @@ components:
           value: "https://redhataiqwen25-7b-instruct-qua-teste-gpu.apps.elpis.fazenda.mg.gov.br"
 
 commands:
-  - id: diagnose-environment
+  - id: install-opencode
     exec:
-      label: Diagnose workspace environment
+      label: Install OpenCode
       component: tools
       commandLine: |
-        echo "===== Dev Spaces environment ====="
-        echo "USER=$(whoami)"
-        echo "HOME=$HOME"
-        echo "PATH=$PATH"
+        set -eu
+
+        echo "============================================"
+        echo " OpenCode bootstrap"
+        echo "============================================"
+
+        echo "User: $(whoami)"
+        echo "Home: $HOME"
+        echo "Node: $(node --version)"
+        echo "NPM:  $(npm --version)"
+
+        npm config set prefix "$HOME/.local"
+
+        if ! command -v opencode >/dev/null 2>&1; then
+          echo
+          echo "Installing OpenCode..."
+          npm install -g opencode-ai@latest
+        else
+          echo
+          echo "OpenCode already installed."
+        fi
 
         echo
-        echo "bash:"
-        command -v bash || true
+        echo "OpenCode:"
+        command -v opencode
+        opencode --version
 
-        echo "node:"
-        command -v node || true
-
-        echo "npm:"
-        command -v npm || true
-
-        echo "curl:"
-        command -v curl || true
-
-        echo "jq:"
-        command -v jq || true
-
-        exit 0
+        echo
+        echo "============================================"
+        echo " OpenCode ready"
+        echo "============================================"
 
 events:
   postStart:
-    - diagnose-environment
+    - install-opencode
