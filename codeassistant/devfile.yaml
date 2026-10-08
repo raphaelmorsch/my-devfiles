@@ -3,23 +3,11 @@ schemaVersion: 2.2.0
 metadata:
   name: qwen25-opencode
   displayName: Qwen2.5 Code Assistant
-  description: >
-    OpenShift Dev Spaces workspace with OpenCode configured
-    to consume Qwen2.5 served by OpenShift AI / vLLM.
-
-attributes:
-  .vscode/extensions.json: |
-    {
-      "recommendations": [
-        "sst-dev.opencode",
-        "redhat.vscode-yaml"
-      ]
-    }
 
 components:
   - name: tools
     container:
-      image: quay.io/devfile/universal-developer-image:ubi9-latest
+      image: registry.redhat.io/devspaces/udi-rhel9
 
       memoryRequest: 1Gi
       memoryLimit: 4Gi
@@ -30,151 +18,38 @@ components:
       mountSources: true
 
       env:
-        # Makes the OpenCode CLI installed in ~/.local visible
-        # to both the terminal and the VS Code extension.
-        - name: PATH
-          value: /home/user/.local/bin:/usr/local/bin:/usr/bin:/bin
-
-        # Your OpenShift AI vLLM deployment.
-        # Do NOT append /v1 here.
         - name: QWEN_BASE_URL
           value: "https://redhataiqwen25-7b-instruct-qua-teste-gpu.apps.elpis.fazenda.mg.gov.br"
 
 commands:
-  - id: bootstrap-opencode
+  - id: diagnose-environment
     exec:
-      label: Bootstrap OpenCode + Qwen2.5
+      label: Diagnose workspace environment
       component: tools
-      workingDir: ${PROJECT_SOURCE}
       commandLine: |
-        set -eu
-
-        echo "=================================================="
-        echo "Installing OpenCode CLI"
-        echo "=================================================="
-
-        mkdir -p "${HOME}/.local"
-
-        npm config set prefix "${HOME}/.local"
-
-        export PATH="${HOME}/.local/bin:${PATH}"
-
-        if ! command -v opencode >/dev/null 2>&1; then
-          npm install -g @opencode/cli
-        fi
+        echo "===== Dev Spaces environment ====="
+        echo "USER=$(whoami)"
+        echo "HOME=$HOME"
+        echo "PATH=$PATH"
 
         echo
-        echo "OpenCode:"
-        opencode --version
+        echo "bash:"
+        command -v bash || true
 
-        echo
-        echo "=================================================="
-        echo "Discovering Qwen model from OpenShift AI"
-        echo "=================================================="
+        echo "node:"
+        command -v node || true
 
-        API_URL="${QWEN_BASE_URL%/}/v1"
+        echo "npm:"
+        command -v npm || true
 
-        echo "API URL: ${API_URL}"
+        echo "curl:"
+        command -v curl || true
 
-        MODEL_ID="$(
-          curl -ksS "${API_URL}/models" |
-          jq -r '.data[0].id // empty'
-        )"
+        echo "jq:"
+        command -v jq || true
 
-        if [ -z "${MODEL_ID}" ]; then
-          echo
-          echo "ERROR: Could not discover a model from:"
-          echo "${API_URL}/models"
-          echo
-          echo "Test it manually with:"
-          echo "curl -ksS ${API_URL}/models | jq"
-          exit 1
-        fi
-
-        echo "Discovered model: ${MODEL_ID}"
-
-        echo
-        echo "=================================================="
-        echo "Creating OpenCode configuration"
-        echo "=================================================="
-
-        cat > "${PROJECT_SOURCE}/opencode.json" <<EOF
-        {
-          "\$schema": "https://opencode.ai/config.json",
-
-          "model": "openshift-ai/qwen25",
-
-          "providers": {
-            "openshift-ai": {
-              "name": "Red Hat OpenShift AI",
-
-              "package": "@opencode/ai/providers/openai-compatible",
-
-              "settings": {
-                "baseURL": "${API_URL}"
-              },
-
-              "models": {
-                "qwen25": {
-                  "modelID": "${MODEL_ID}",
-                  "name": "Qwen2.5 - OpenShift AI",
-
-                  "capabilities": {
-                    "tools": true,
-                    "input": [
-                      "text"
-                    ],
-                    "output": [
-                      "text"
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        }
-        EOF
-
-        echo
-        echo "Generated ${PROJECT_SOURCE}/opencode.json:"
-        echo "--------------------------------------------------"
-        cat "${PROJECT_SOURCE}/opencode.json"
-        echo "--------------------------------------------------"
-
-        echo
-        echo "=================================================="
-        echo "Testing OpenAI-compatible API"
-        echo "=================================================="
-
-        curl -ksS \
-          "${API_URL}/chat/completions" \
-          -H "Content-Type: application/json" \
-          -d "{
-            \"model\": \"${MODEL_ID}\",
-            \"messages\": [
-              {
-                \"role\": \"user\",
-                \"content\": \"Reply only with: Qwen2.5 connected successfully\"
-              }
-            ],
-            \"max_tokens\": 64
-          }" | jq .
-
-        echo
-        echo "=================================================="
-        echo "Workspace ready."
-        echo
-        echo "Model:    openshift-ai/qwen25"
-        echo "Upstream: ${MODEL_ID}"
-        echo "API:      ${API_URL}"
-        echo
-        echo "Run:"
-        echo "  opencode"
-        echo
-        echo "Or:"
-        echo "  opencode run --model openshift-ai/qwen25 \"Explain this repository\""
-        echo "=================================================="
+        exit 0
 
 events:
   postStart:
-    - bootstrap-opencode
+    - diagnose-environment
