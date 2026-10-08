@@ -1,16 +1,16 @@
-schemaVersion: 2.3.0
+schemaVersion: 2.2.0
 
 metadata:
   name: ai-code-assistant
   displayName: AI Code Assistant
   description: >
-    OpenShift Dev Spaces workspace prepared for
-    OpenAI-compatible coding assistants.
+    OpenShift Dev Spaces workspace prepared to consume
+    OpenAI-compatible models such as OpenShift AI vLLM.
 
 components:
   - name: tools
     container:
-      image: registry.redhat.io/devspaces/udi-rhel9:3.29-1782991491
+      image: registry.redhat.io/devspaces/udi-rhel9
 
       memoryRequest: 2Gi
       memoryLimit: 6Gi
@@ -21,60 +21,36 @@ components:
       mountSources: true
 
 commands:
-
-  # ---------------------------------------------------------
-  # Bootstrap
-  # ---------------------------------------------------------
-
-  - id: bootstrap-ai-tools
+  - id: bootstrap-ai-assistant
     exec:
-      label: Bootstrap AI Coding Tools
+      label: Bootstrap AI Code Assistant
       component: tools
       commandLine: |
         set -u
 
-        echo "=================================================="
-        echo " AI Coding Workspace Bootstrap"
-        echo "=================================================="
+        echo "============================================"
+        echo " AI Code Assistant bootstrap"
+        echo "============================================"
 
         echo "User: $(whoami)"
         echo "Home: $HOME"
-        echo
 
         #
-        # Check configuration
-        #
-
-        echo "AI Provider : ${AI_PROVIDER_NAME:-not configured}"
-        echo "AI Base URL : ${AI_BASE_URL:-not configured}"
-        echo "AI Model    : ${AI_MODEL:-not configured}"
-
-        if [ -z "${AI_BASE_URL:-}" ] || [ -z "${AI_MODEL:-}" ]; then
-          echo
-          echo "WARNING:"
-          echo "AI_BASE_URL or AI_MODEL is not configured."
-          echo "Workspace will start normally."
-          exit 0
-        fi
-
-        #
-        # Install OpenCode
+        # OpenCode
         #
 
         npm config set prefix "$HOME/.local"
 
         if ! command -v opencode >/dev/null 2>&1; then
-
           echo
-          echo "Installing OpenCode..."
+          echo "Installing OpenCode 1.18.35..."
 
-          if ! npm install -g opencode-ai@latest; then
+          if ! npm install -g opencode-ai@1.18.35; then
             echo
             echo "WARNING: OpenCode installation failed."
-            echo "Workspace will continue starting."
+            echo "The workspace will still be started."
             exit 0
           fi
-
         fi
 
         echo
@@ -83,8 +59,22 @@ commands:
         opencode --version
 
         #
-        # Generate OpenCode configuration
+        # AI configuration
         #
+
+        if [ -z "${AI_BASE_URL:-}" ]; then
+          echo
+          echo "WARNING: AI_BASE_URL is not configured."
+          echo "OpenCode was installed, but no AI provider was configured."
+          exit 0
+        fi
+
+        if [ -z "${AI_MODEL:-}" ]; then
+          echo
+          echo "WARNING: AI_MODEL is not configured."
+          echo "OpenCode was installed, but no AI provider was configured."
+          exit 0
+        fi
 
         mkdir -p "$HOME/.config/opencode"
 
@@ -92,15 +82,34 @@ commands:
         const fs = require("fs");
         const path = require("path");
 
-        const model = process.env.AI_MODEL;
+        function clean(value) {
+          if (!value) return "";
 
-        if (!model) {
-          console.error("AI_MODEL not defined");
-          process.exit(0);
+          return value
+            .trim()
+            .replace(/^['"]+/, "")
+            .replace(/['"]+$/, "");
         }
 
+        const baseURL = clean(process.env.AI_BASE_URL)
+          .replace(/\/+$/, "");
+
+        const model = clean(process.env.AI_MODEL);
+
         const providerName =
-          process.env.AI_PROVIDER_NAME || "OpenAI Compatible";
+          clean(process.env.AI_PROVIDER_NAME) ||
+          "OpenShift AI";
+
+        const apiKey =
+          clean(process.env.AI_API_KEY);
+
+        const options = {
+          baseURL: "{env:AI_BASE_URL}"
+        };
+
+        if (apiKey) {
+          options.apiKey = "{env:AI_API_KEY}";
+        }
 
         const config = {
           "$schema": "https://opencode.ai/config.json",
@@ -110,14 +119,8 @@ commands:
           "provider": {
             "devspaces": {
               "npm": "@ai-sdk/openai-compatible",
-
               "name": providerName,
-
-              "options": {
-                "baseURL": "{env:AI_BASE_URL}",
-                "apiKey": "{env:AI_API_KEY}"
-              },
-
+              "options": options,
               "models": {
                 [model]: {
                   "name": model
@@ -127,64 +130,91 @@ commands:
           }
         };
 
-        const home = process.env.HOME;
-        const output =
-          path.join(home, ".config", "opencode", "opencode.json");
+        const configPath = path.join(
+          process.env.HOME,
+          ".config",
+          "opencode",
+          "opencode.json"
+        );
 
         fs.writeFileSync(
-          output,
+          configPath,
           JSON.stringify(config, null, 2)
         );
 
-        console.log(`Generated ${output}`);
+        console.log(`Generated ${configPath}`);
+        console.log(`Provider : ${providerName}`);
+        console.log(`Base URL : ${baseURL}`);
+        console.log(`Model    : ${model}`);
+        console.log(
+          `API key  : ${apiKey ? "configured" : "not configured"}`
+        );
         NODE
 
         echo
-        echo "=================================================="
-        echo " AI workspace ready"
-        echo "=================================================="
-
+        echo "============================================"
+        echo " AI Code Assistant ready"
+        echo "============================================"
         echo
-        echo "Provider: ${AI_PROVIDER_NAME:-OpenAI Compatible}"
-        echo "Model:    ${AI_MODEL}"
+        echo "Provider: ${AI_PROVIDER_NAME:-OpenShift AI}"
         echo "Endpoint: ${AI_BASE_URL}"
+        echo "Model:    ${AI_MODEL}"
+        echo
+        echo "Test with:"
+        echo "  opencode run \"Reply exactly with: AI connection OK\""
         echo
 
         exit 0
 
-
-  # ---------------------------------------------------------
-  # Connectivity test
-  # ---------------------------------------------------------
-
-  - id: test-ai-model
+  - id: test-ai-connection
     exec:
-      label: Test AI Model
+      label: Test AI Connection
       component: tools
       commandLine: |
-        set -e
+        if [ -z "${AI_BASE_URL:-}" ] || [ -z "${AI_MODEL:-}" ]; then
+          echo "AI_BASE_URL and AI_MODEL must be configured."
+          exit 1
+        fi
 
-        echo "Testing:"
-        echo "  ${AI_BASE_URL}"
-        echo "  ${AI_MODEL}"
-        echo
+        AUTH_HEADER=""
 
-        curl -fsS \
-          "${AI_BASE_URL}/chat/completions" \
-          -H "Authorization: Bearer ${AI_API_KEY}" \
-          -H "Content-Type: application/json" \
-          -d "{
-            \"model\": \"${AI_MODEL}\",
-            \"messages\": [
-              {
-                \"role\": \"user\",
-                \"content\": \"Reply exactly with: Dev Spaces AI connection OK\"
-              }
-            ],
-            \"max_tokens\": 64
-          }" | python3 -m json.tool
+        if [ -n "${AI_API_KEY:-}" ]; then
+          AUTH_HEADER="Authorization: Bearer ${AI_API_KEY}"
+        fi
 
+        if [ -n "$AUTH_HEADER" ]; then
+          curl -fsS \
+            "${AI_BASE_URL%/}/chat/completions" \
+            -H "$AUTH_HEADER" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"model\": \"${AI_MODEL}\",
+              \"messages\": [
+                {
+                  \"role\": \"user\",
+                  \"content\": \"Reply exactly with: AI connection OK\"
+                }
+              ],
+              \"stream\": false,
+              \"max_tokens\": 32
+            }" | python3 -m json.tool
+        else
+          curl -fsS \
+            "${AI_BASE_URL%/}/chat/completions" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"model\": \"${AI_MODEL}\",
+              \"messages\": [
+                {
+                  \"role\": \"user\",
+                  \"content\": \"Reply exactly with: AI connection OK\"
+                }
+              ],
+              \"stream\": false,
+              \"max_tokens\": 32
+            }" | python3 -m json.tool
+        fi
 
 events:
   postStart:
-    - bootstrap-ai-tools
+    - bootstrap-ai-assistant
