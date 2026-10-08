@@ -1,11 +1,11 @@
 schemaVersion: 2.3.0
 
 metadata:
-  name: qwen25-opencode
-  displayName: Qwen2.5 Code Assistant
+  name: ai-code-assistant
+  displayName: AI Code Assistant
   description: >
-    OpenShift Dev Spaces workspace with OpenCode configured
-    to consume Qwen2.5 served by OpenShift AI / vLLM.
+    OpenShift Dev Spaces workspace prepared for
+    OpenAI-compatible coding assistants.
 
 components:
   - name: tools
@@ -20,36 +20,61 @@ components:
 
       mountSources: true
 
-      env:
-        - name: QWEN_BASE_URL
-          value: "https://redhataiqwen25-7b-instruct-qua-teste-gpu.apps.elpis.fazenda.mg.gov.br"
-
 commands:
-  - id: install-opencode
+
+  # ---------------------------------------------------------
+  # Bootstrap
+  # ---------------------------------------------------------
+
+  - id: bootstrap-ai-tools
     exec:
-      label: Install OpenCode
+      label: Bootstrap AI Coding Tools
       component: tools
       commandLine: |
-        set -eu
+        set -u
 
-        echo "============================================"
-        echo " OpenCode bootstrap"
-        echo "============================================"
+        echo "=================================================="
+        echo " AI Coding Workspace Bootstrap"
+        echo "=================================================="
 
         echo "User: $(whoami)"
         echo "Home: $HOME"
-        echo "Node: $(node --version)"
-        echo "NPM:  $(npm --version)"
+        echo
+
+        #
+        # Check configuration
+        #
+
+        echo "AI Provider : ${AI_PROVIDER_NAME:-not configured}"
+        echo "AI Base URL : ${AI_BASE_URL:-not configured}"
+        echo "AI Model    : ${AI_MODEL:-not configured}"
+
+        if [ -z "${AI_BASE_URL:-}" ] || [ -z "${AI_MODEL:-}" ]; then
+          echo
+          echo "WARNING:"
+          echo "AI_BASE_URL or AI_MODEL is not configured."
+          echo "Workspace will start normally."
+          exit 0
+        fi
+
+        #
+        # Install OpenCode
+        #
 
         npm config set prefix "$HOME/.local"
 
         if ! command -v opencode >/dev/null 2>&1; then
+
           echo
           echo "Installing OpenCode..."
-          npm install -g opencode-ai@latest
-        else
-          echo
-          echo "OpenCode already installed."
+
+          if ! npm install -g opencode-ai@latest; then
+            echo
+            echo "WARNING: OpenCode installation failed."
+            echo "Workspace will continue starting."
+            exit 0
+          fi
+
         fi
 
         echo
@@ -57,11 +82,109 @@ commands:
         command -v opencode
         opencode --version
 
+        #
+        # Generate OpenCode configuration
+        #
+
+        mkdir -p "$HOME/.config/opencode"
+
+        node <<'NODE'
+        const fs = require("fs");
+        const path = require("path");
+
+        const model = process.env.AI_MODEL;
+
+        if (!model) {
+          console.error("AI_MODEL not defined");
+          process.exit(0);
+        }
+
+        const providerName =
+          process.env.AI_PROVIDER_NAME || "OpenAI Compatible";
+
+        const config = {
+          "$schema": "https://opencode.ai/config.json",
+
+          "model": `devspaces/${model}`,
+
+          "provider": {
+            "devspaces": {
+              "npm": "@ai-sdk/openai-compatible",
+
+              "name": providerName,
+
+              "options": {
+                "baseURL": "{env:AI_BASE_URL}",
+                "apiKey": "{env:AI_API_KEY}"
+              },
+
+              "models": {
+                [model]: {
+                  "name": model
+                }
+              }
+            }
+          }
+        };
+
+        const home = process.env.HOME;
+        const output =
+          path.join(home, ".config", "opencode", "opencode.json");
+
+        fs.writeFileSync(
+          output,
+          JSON.stringify(config, null, 2)
+        );
+
+        console.log(`Generated ${output}`);
+        NODE
+
         echo
-        echo "============================================"
-        echo " OpenCode ready"
-        echo "============================================"
+        echo "=================================================="
+        echo " AI workspace ready"
+        echo "=================================================="
+
+        echo
+        echo "Provider: ${AI_PROVIDER_NAME:-OpenAI Compatible}"
+        echo "Model:    ${AI_MODEL}"
+        echo "Endpoint: ${AI_BASE_URL}"
+        echo
+
+        exit 0
+
+
+  # ---------------------------------------------------------
+  # Connectivity test
+  # ---------------------------------------------------------
+
+  - id: test-ai-model
+    exec:
+      label: Test AI Model
+      component: tools
+      commandLine: |
+        set -e
+
+        echo "Testing:"
+        echo "  ${AI_BASE_URL}"
+        echo "  ${AI_MODEL}"
+        echo
+
+        curl -fsS \
+          "${AI_BASE_URL}/chat/completions" \
+          -H "Authorization: Bearer ${AI_API_KEY}" \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"model\": \"${AI_MODEL}\",
+            \"messages\": [
+              {
+                \"role\": \"user\",
+                \"content\": \"Reply exactly with: Dev Spaces AI connection OK\"
+              }
+            ],
+            \"max_tokens\": 64
+          }" | python3 -m json.tool
+
 
 events:
   postStart:
-    - install-opencode
+    - bootstrap-ai-tools
