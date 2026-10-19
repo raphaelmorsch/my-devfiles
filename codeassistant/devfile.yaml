@@ -21,6 +21,15 @@ components:
       mountSources: true
 
 commands:
+  - id: verify-spark
+    exec:
+      component: tools
+      commandLine: |
+        oc get sparkapplications -n ${SPARK_NS}
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: run
+
   - id: bootstrap-ai-assistant
     exec:
       label: Bootstrap AI Code Assistant
