@@ -123,7 +123,11 @@ commands:
               "options": options,
               "models": {
                 [model]: {
-                  "name": model
+                  "name": model,
+                  "limit": {
+                    "context": 32768,
+                    "output": 4096
+                  }
                 }
               }
             }
